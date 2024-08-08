@@ -1,2 +1,2 @@
 # LD-BFR
-The code will coming soon.
+The code will come in soon.
