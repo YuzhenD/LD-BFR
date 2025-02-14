@@ -1,0 +1,168 @@
+model:
+  resume: /home/dyz/Code/JD/latent-diffusion/logs/2023-11-01T11-34-19_ffhq-ldm-cvq-4/checkpoints/last.ckpt
+  base_learning_rate: 2.0e-7
+  target: ldm.models.diffusion.ddpm.LatentDiffusion
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0195
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    first_stage_key: lq
+    image_size: 64
+    channels: 3
+    monitor: val/loss_simple_ema
+
+    # scheduler_config: # 10000 warmup steps
+    #   target: ldm.lr_scheduler.LambdaLinearScheduler
+    #   params:
+    #     warm_up_steps: [10000]
+    #     cycle_lengths: [1000000000]
+    #     f_start: [0.]
+    #     f_max: [1.e-4]
+    #     f_min: [1.e-7]
+
+    unet_config:
+      target: ldm.modules.diffusionmodules.UNet_changed.UNetModel
+      params:
+        image_size: 64
+        in_channels: 3
+        out_channels: 3
+        model_channels: 224
+        attention_resolutions:
+        # note: this isn\t actually the resolution but
+        # the downsampling factor, i.e. this corresnponds to
+        # attention on spatial resolution 8,16,32, as the
+        # spatial reolution of the latents is 64 for f4
+        - 8
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 3
+        - 4
+        num_head_channels: 32
+    first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface
+      params:
+        embed_dim: 3
+        n_embed: 8192
+        ckpt_path: models/first_stage_models/vq-f4/Cross.ckpt
+        ddconfig:
+          double_z: false
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+    cond_stage_config: __is_unconditional__
+    gt_first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface_gt
+      params:
+        embed_dim: 3
+        n_embed: 8192
+        ckpt_path: /mnt/tmp/dyz/JD/latent-diffusion/last.ckpt
+        ddconfig:
+          double_z: false
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 8
+    num_workers: 8
+    train:
+      target: data.ffhq_degradation_dataset.FFHQDegradationDataset
+      params:
+        dataroot_gt: /mnt/tmp/dyz/JD/latent-diffusion/FFHQ/ffhq_256/
+        io_backend:
+          type: disk
+        use_hflip: False
+        mean: [0.0, 0.0, 0.0]
+        std: [1.0, 1.0, 1.0]
+        out_size: 256
+
+        blur_kernel_size: [19,20]
+        kernel_list: ['iso', 'aniso']
+        kernel_prob: [0.5, 0.5]
+        blur_sigma: [0.1, 10]
+        downsample_range: [0.8, 8]
+        noise_range: [0, 20]
+        jpeg_range: [60, 100]
+
+        color_jitter_prob: ~
+        color_jitter_shift: 20
+        color_jitter_pt_prob: ~
+        gray_prob: ~
+        gt_gray: True
+
+        crop_components: False
+        component_path: experiments/pretrained_models/FFHQ_eye_mouth_landmarks_512.pth
+        eye_enlarge_ratio: 1.4
+
+
+    validation:
+      target: data.ffhq_degradation_dataset.FFHQDegradationDataset
+      params:
+        dataroot_gt: /mnt/tmp/dyz/JD/latent-diffusion/FFHQ/ffhqval/
+        io_backend:
+          type: disk
+        use_hflip: False
+        mean: [0.0, 0.0, 0.0]
+        std: [1.0, 1.0, 1.0]
+        out_size: 256
+
+        blur_kernel_size: [19,20]
+        kernel_list: ['iso', 'aniso']
+        kernel_prob: [0.5, 0.5]
+        blur_sigma: [0.1, 10]
+        downsample_range: [0.8, 8]
+        noise_range: [0, 20]
+        jpeg_range: [60, 100]
+
+        # color jitter and gray
+        color_jitter_prob: ~
+        color_jitter_shift: 20
+        color_jitter_pt_prob: ~
+        gray_prob: ~
+        gt_gray: True
+
+        crop_components: False
+        component_path: experiments/pretrained_models/FFHQ_eye_mouth_landmarks_512.pth
+        eye_enlarge_ratio: 1.4
+
+
+lightning:
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 1 # We can change the sample frequency by changing this value
+        max_images: 1
+        increase_log_steps: False
+
+  trainer:
+    benchmark: True
