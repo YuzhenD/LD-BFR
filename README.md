@@ -12,7 +12,7 @@ Their related configs are `ffhq-ldm-cvq-4.yaml`.
 
 If you use this code in your research, please cite the following paper:
 
-、
+`
 @inproceedings{du2024ld,
 title={LD-BFR: Vector-Quantization-Based Face Restoration Model with Latent Diffusion Enhancement},
 author={Du, Yuzhen and Hu, Teng and Yi, Ran and Ma, Lizhuang},
@@ -20,4 +20,4 @@ booktitle={Proceedings of the 32nd ACM International Conference on Multimedia},
 pages={2852--2860},
 year={2024}
 }
-、
+`
